@@ -3,9 +3,18 @@
 BEGIN {
 	FS = "\t";
 	last_pgn = -1;
+	debug_outfile = "j1939.txt";
+	c_header_outfile = "j1939_reg.h"
+	printf "#ifndef HAVE_J1939_REG_H\n" > c_header_outfile;
+	printf "#define HAVE_J1939_REG_H\n" > c_header_outfile;
 }
 
-function bitlen(input)
+END {
+	printf "\n" > c_header_outfile;
+	printf "#endif\n" > c_header_outfile;
+}
+
+function bitlen(input,  num, unit)
 {
 	split(input, tmp, " ");
 
@@ -20,7 +29,7 @@ function bitlen(input)
 	printf "UNEXPECTED SIZE: %s\n", input;
 }
 
-function bitpos(input)
+function bitpos(input,  byte, bit)
 {
 	split(input, tmp, ",");
 	input = tmp[1];
@@ -44,12 +53,15 @@ function bitpos(input)
 	return bit + 8 * byte;
 }
 
-function pgn_header()
+function pgn_header(  id)
 {
-	printf "%5d %s  %s\n", pgn, pg_name, pg_label;
+	printf "%5d %s  %s\n", pgn, pg_name, pg_label > debug_outfile;
+	printf "\n" > c_header_outfile;
+	printf "// %s (%d)  %s\n", pg_name, pgn, pg_label > c_header_outfile;
+	printf "\n" > c_header_outfile;
 }
 
-function spn_record()
+function spn_record(  len, pos, mask, shift, hex)
 {
 	len = bitlen(sp_length);
 	pos = bitpos(position);
@@ -60,7 +72,18 @@ function spn_record()
 		return;
 	}
 	printf "\t%5d bitpos=%2d bitlen=%2d {%7s %6s} %s\n", \
-		spn, pos, len, sp_length, position, sp_label;
+		spn, pos, len, sp_length, position, sp_label  > debug_outfile;
+
+#	printf "\n" > c_header_outfile;
+#	printf "// %5d bitpos=%2d bitlen=%2d {%7s %6s} %s\n", \
+#	 	spn, pos, len, sp_length, position, sp_label  > c_header_outfile;
+
+	mask = sprintf("SPN%d_MASK", spn);
+	shift = sprintf("SPN%d_SHIFT", spn);
+	hex = int(lshift(1, len)) - 1;
+
+	printf "#define %-16s 0x%x\n", mask, hex > c_header_outfile;
+	printf "#define %-16s %d\n", shift, pos > c_header_outfile;
 }
 
 $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
