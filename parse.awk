@@ -14,6 +14,10 @@ BEGIN {
 	printf "#define HAVE_J1939_REG_H\n" > c_header_outfile;
 	printf "\n" > c_header_outfile;
 	printf "#include <stdint.h>\n" > c_header_outfile;
+	printf "#include <stdio.h>\n" > c_header_outfile;
+	printf "\n" > c_header_outfile;
+	printf "#define %-16s %s\n", "PGN_MASK", "0x3ffff" > c_header_outfile;
+	printf "#define %-16s %s\n", "PGN_SHIFT", "8" > c_header_outfile;
 
 	printf "#include \"%s\"\n", c_header_outfile > c_decode_outfile;
 	printf "\n" > c_decode_outfile;
@@ -43,6 +47,9 @@ END {
 	}
 	printf "\t};\n" > c_header_outfile;
 	printf "};\n" > c_header_outfile;
+	printf "\n" > c_header_outfile;
+	printf "int j1939_decode(unsigned int type, uint64_t data, struct j1939_msg *msg);\n" > c_header_outfile;
+	printf "void j1939_print(FILE *fp, struct j1939_msg *msg);\n" > c_header_outfile;
 	printf "\n" > c_header_outfile;
 	printf "#endif\n" > c_header_outfile;
 
