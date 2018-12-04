@@ -19,7 +19,7 @@ static void usage(char *progname)
 int main(int argc, char *argv[])
 {
 	char *infile = NULL, line[128], *progname;
-	uint32_t cid, ms, pgn;
+	uint32_t cid, ms, pf, pgn, ps;
 	struct j1939_msg msg;
 	int64_t data, sec;
 	int c, cnt;
@@ -67,12 +67,17 @@ int main(int argc, char *argv[])
 		if (cnt != 4) {
 			continue;
 		}
-		pgn = (cid >> PGN_SHIFT) & PGN_MASK;
+		pf = (cid >> PF_SHIFT) & PF_MASK;
+		ps = (cid >> PS_SHIFT) & PS_MASK;
+		if (pf < 240) {
+			ps = 0;
+		}
+		pgn = (pf << 8) | ps;
 		data = __builtin_bswap64(data);
 		if (!j1939_decode(pgn, data, &msg)) {
 			j1939_print(stdout, &msg);
 		} else {
-			printf("* unknown cid 0x%x pgn %u\n", cid, pgn);
+			printf("* unknown cid 0x%08x pgn %u\n", cid, pgn);
 		}
 	}
 	fclose(fp);

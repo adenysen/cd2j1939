@@ -16,8 +16,10 @@ BEGIN {
 	printf "#include <stdint.h>\n" > c_header_outfile;
 	printf "#include <stdio.h>\n" > c_header_outfile;
 	printf "\n" > c_header_outfile;
-	printf "#define %-16s %s\n", "PGN_MASK", "0x3ffff" > c_header_outfile;
-	printf "#define %-16s %s\n", "PGN_SHIFT", "8" > c_header_outfile;
+	printf "#define %-16s %s\n", "PF_MASK",  "0xff"	> c_header_outfile;
+	printf "#define %-16s %s\n", "PF_SHIFT", "16"	> c_header_outfile;
+	printf "#define %-16s %s\n", "PS_MASK",  "0xff"	> c_header_outfile;
+	printf "#define %-16s %s\n", "PS_SHIFT", "8"	> c_header_outfile;
 
 	printf "#include \"%s\"\n", c_header_outfile > c_decode_outfile;
 	printf "\n" > c_decode_outfile;
