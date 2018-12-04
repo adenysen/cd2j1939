@@ -1,0 +1,33 @@
+
+https://blog.frogslayer.com/a-primer-on-can/
+
+Time    ms.us   Msgs.   ID         L DB0 DB1 DB2 DB3 DB4 DB5 DB6 DB7
+        10.084   11507  0C000007x  8  C9  40  15  FF  00  FF  FF  FF
+        10.165   11508  0C010305x  8  F3  FF  7E  FF  FF  FF  FF  FF
+        10.023    4992  0CF00203x  8  C0  00  00  FF  FF  00  00  FF
+
+First message is id 0x0C000007, or, priority 3, PGN 0x0000, from
+node 7. A PGN of all 0’s means someone at the SAE thought this was
+important. And indeed it is. This is Torque/Speed Control 1 (TSC1),
+otherwise known as throttle control. As PDUF<240, PDUS is the target
+node id, so this is being sent to node 0, typically the engine
+ECU. Bytes 2 and 3 gives the requested RPM as 0x1540 = 5,440, which is
+in increments of 1/8th RPM. So, the actual request is for 680 RPM.
+
+Second message is id 0x0c010305; priority 3, PGN 0x0100, from node 5
+(shift selector), being sent to node 3 (TCM). The PGN for this is
+0x0100 (target nodes are by definition not part of the PGN), and is
+Transmission Control 1 (TC1). Based on the data, the only part of the
+request actually being sent out are bytes 1 and 3. Byte 1 is a bit
+field, byte 3 is the requested gear. 0x7E is a request for first
+gear. For Twin Disk transmissions. The message here is effectively
+requesting a specific gear. There’s another set of values (used by
+some Alison transmissions), ranging from 0xF5 to 0xEF, and 0xFC,
+corresponding to positions on a shift selector. Quite literally ‘D’,
+‘D-1’, ‘D-2’.
+
+Third Message is PGN 0xF002, a broadcast message from 0x03, the
+transmission controller. Looking at the previous definition for
+0xF002, ETC1, we see we have an input and output rpm of 0 (engine is
+off), and the drive line is not engaged. None of the other data is
+available.
