@@ -3,15 +3,39 @@
 BEGIN {
 	FS = "\t";
 	last_pgn = -1;
+	n_fields = 0;
+	n_pgn = 0;
 	debug_outfile = "j1939.txt";
-	c_header_outfile = "j1939_reg.h"
+	c_header_outfile = "j1939_msg.h"
+	c_decode_outfile = "j1939_decode.c"
+
 	printf "#ifndef HAVE_J1939_REG_H\n" > c_header_outfile;
 	printf "#define HAVE_J1939_REG_H\n" > c_header_outfile;
+	printf "\n" > c_header_outfile;
+	printf "#include <stdint.h>\n" > c_header_outfile;
+
+	printf "#include \"%s\"\n", c_header_outfile > c_decode_outfile;
+	printf "\n" > c_decode_outfile;
+	printf "int j1939_decode(unsigned int type, uint64_t data, struct j1939_msg *msg)\n" > c_decode_outfile;
+	printf "{\n" > c_decode_outfile;
+	printf "\tswitch (type) {\n" > c_decode_outfile;
 }
 
 END {
 	printf "\n" > c_header_outfile;
+	printf "struct j1938_msg {\n" > c_header_outfile;
+	printf "\tunsigned int type;\n" > c_header_outfile;
+	printf "\tunion {\n" > c_header_outfile;
+	for (i = 0; i < n_pgn; i++) {
+		printf "\t\tstruct %s;\n", all_pgn[i] > c_header_outfile;
+	}
+	printf "\t}\n" > c_header_outfile;
+	printf "}\n" > c_header_outfile;
+	printf "\n" > c_header_outfile;
 	printf "#endif\n" > c_header_outfile;
+
+	printf "\t}\n" > c_decode_outfile;
+	printf "}\n" > c_decode_outfile;
 }
 
 function bitlen(input,  num, unit)
@@ -53,12 +77,45 @@ function bitpos(input,  byte, bit)
 	return bit + 8 * byte;
 }
 
-function pgn_header(  id)
+function pgn_header()
 {
+	#
+	# FOREACH PGN
+	#
 	printf "%5d %s  %s\n", pgn, pg_name, pg_label > debug_outfile;
+
 	printf "\n" > c_header_outfile;
-	printf "// %s (%d)  %s\n", pg_name, pgn, pg_label > c_header_outfile;
+	printf "// %s\n", pg_label > c_header_outfile;
 	printf "\n" > c_header_outfile;
+	printf "#define %-16s %d\n", pg_name, pgn > c_header_outfile;
+
+	printf "\tcase %s:\n", pg_name > c_decode_outfile;
+
+	all_pgn[n_pgn] = pg_name;
+	n_pgn++;
+}
+
+function pgn_footer(  i, word)
+{
+	if (last_pgn == -1) {
+		return;
+	}
+	#
+	# FOREACH SPN
+	#
+	printf "\n" > c_header_outfile;
+	printf "struct %s {\n", pg_name > c_header_outfile;
+	for (i = 0; i < n_fields; i++) {
+		word = int((f_len[i] + 7) / 8);
+		word *= 8;
+		printf "\tuint%d_t spn%d;\n", \
+			word, f_spn[i] > c_header_outfile;
+		printf "\t\tmsg->spn%d = (data >> SPN%d_SHIFT) & SPN%d_MASK;\n", \
+			f_spn[i], f_spn[i], f_spn[i] > c_decode_outfile;
+	}
+	printf "};\n" > c_header_outfile;
+	printf "\t\tbreak\n" > c_decode_outfile;
+	n_fields = 0;
 }
 
 function spn_record(  len, pos, mask, shift, hex)
@@ -74,19 +131,22 @@ function spn_record(  len, pos, mask, shift, hex)
 	printf "\t%5d bitpos=%2d bitlen=%2d {%7s %6s} %s\n", \
 		spn, pos, len, sp_length, position, sp_label  > debug_outfile;
 
-#	printf "\n" > c_header_outfile;
-#	printf "// %5d bitpos=%2d bitlen=%2d {%7s %6s} %s\n", \
-#	 	spn, pos, len, sp_length, position, sp_label  > c_header_outfile;
-
 	mask = sprintf("SPN%d_MASK", spn);
 	shift = sprintf("SPN%d_SHIFT", spn);
 	hex = int(lshift(1, len)) - 1;
 
 	printf "#define %-16s 0x%x\n", mask, hex > c_header_outfile;
 	printf "#define %-16s %d\n", shift, pos > c_header_outfile;
+
+	f_spn[n_fields] = spn;
+	f_len[n_fields] = len;
+	n_fields++;
 }
 
 $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
+	if ($5 != last_pgn) {
+		pgn_footer();
+	}
 	pgn = $5;
 	pg_label = $6;
 	pg_name = $7;
@@ -108,7 +168,7 @@ $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
 	resolution = $23; # NB text
 	offset = $24; # NB some are number with unit
 	datrange = $25; # "0 to 8,000.1 rpm"
-	operange = $26; 
+	operange = $26;
 	units = $27;
 	slot_id = $28; # index
 	slot_name = $29; # internal database name
@@ -121,7 +181,7 @@ $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
 
 	if (pgn != last_pgn) {
 		pgn_header();
-		last_pgn = pgn;
 	}
 	spn_record();
+	last_pgn = pgn;
 }
