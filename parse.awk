@@ -28,12 +28,16 @@ BEGIN {
 	printf "\tmsg->type = type;\n"			> c_decode_outfile;
 	printf "\tswitch (msg->type) {\n"		> c_decode_outfile;
 
-	printf "#include <stdio.h>\n"			> c_print_outfile;
-	printf "#include \"%s\"\n", c_header_outfile	> c_print_outfile;
-	printf "\n"					> c_print_outfile;
-	printf "void j1939_print(FILE *fp, struct j1939_msg *msg)\n" > c_print_outfile;
-	printf "{\n"					> c_print_outfile;
-	printf "\tswitch (msg->type) {\n"		> c_print_outfile;
+	printf "#include <stdio.h>\n"					> c_print_outfile;
+	printf "#include \"%s\"\n", c_header_outfile			> c_print_outfile;
+	printf "#include \"j1939_slot.h\"\n"				> c_print_outfile;
+	printf "\n"							> c_print_outfile;
+	printf "\tstatic char nastr[] = \"         NA\";"		> c_print_outfile;
+	printf "\n"							> c_print_outfile;
+	printf "void j1939_print(FILE *fp, struct j1939_msg *msg)\n"	> c_print_outfile;
+	printf "{\n"							> c_print_outfile;
+	printf "\tchar *ptr, buf[128];\n"				> c_print_outfile;
+	printf "\tswitch (msg->type) {\n"				> c_print_outfile;
 }
 
 END {
@@ -127,7 +131,7 @@ function pgn_header()
 	n_pgn++;
 }
 
-function pgn_footer(  i, word)
+function pgn_footer(  i, label, word)
 {
 	if (last_pgn == -1) {
 		return;
@@ -151,8 +155,26 @@ function pgn_footer(  i, word)
 		printf "\t\tmsg->%s.spn%d = (data >> SPN%d_SHIFT) & SPN%d_MASK;\n", \
 			tolower(pg_name), f_spn[i], f_spn[i], f_spn[i] > c_decode_outfile;
 
-		printf "\t\tfprintf(fp, \"  %s: 0x%%x\\n\", msg->%s.spn%d);\n", \
-			f_label[i], tolower(pg_name), f_spn[i] > c_print_outfile;
+		printf "\t\tif (msg->%s.spn%d == SPN%d_MASK) {\n", \
+			tolower(pg_name), f_spn[i], f_spn[i] > c_print_outfile;
+
+		printf "\t\t\tptr = nastr;\n"	> c_print_outfile;
+		printf "\t\t} else {\n"		> c_print_outfile;
+
+		printf "\t\t\t%s(msg->%s.spn%d, buf, sizeof(buf));\n", \
+			slot_name, tolower(pg_name), f_spn[i] > c_print_outfile;
+
+		printf "\t\t\tptr = buf;\n"	> c_print_outfile;
+		printf "\t\t}\n"		> c_print_outfile;
+
+		# Truncate label to a reasonable length.
+		label = substr(f_label[i], 1, 50);
+		if (label != f_label[i]) {
+		    label = label "..."
+		}
+
+		printf "\t\tfprintf(fp, \"  %-54s %%s %s  0x%%x\\n\", ptr, msg->%s.spn%d);\n", \
+			label, units, tolower(pg_name), f_spn[i] > c_print_outfile;
 	}
 	printf "};\n"					> c_header_outfile;
 	printf "\t\tbreak;\n"				> c_decode_outfile;
@@ -221,6 +243,12 @@ $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
 
 	# Some of the labels have "" so remove them.
 	gsub("\"", "'", sp_label);
+
+	# Some units are empty or have %, so fix it.
+	if (!units) {
+		units = ";";
+	}
+	gsub("%", "%%", units);
 
 	# Sanity check for duplicate SPN numbers.
 	if (spn in all) {
