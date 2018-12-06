@@ -10,6 +10,9 @@ BEGIN {
 	c_decode_outfile = "j1939_decode.c"
 	c_print_outfile = "j1939_print.c"
 
+	# TCL
+	printf "set ::all_pgn {\n"
+
 	printf "#ifndef HAVE_J1939_REG_H\n"		> c_header_outfile;
 	printf "#define HAVE_J1939_REG_H\n"		> c_header_outfile;
 	printf "\n"					> c_header_outfile;
@@ -68,6 +71,9 @@ END {
 
 	printf "\t}\n"					> c_print_outfile;
 	printf "}\n"					> c_print_outfile;
+
+	# TCL
+	printf "}\n"
 }
 
 function bitlen(input,  num, unit)
@@ -109,8 +115,47 @@ function bitpos(input,  byte, bit)
 	return bit + 8 * byte;
 }
 
+function print_protect(x, indent,  i)
+{
+	for (i = 0; i < indent; i++) {
+		printf "\t";
+	}
+	if (match(x, " ") || x == "") {
+		printf "{%s}", x;
+	} else {
+		printf "%s", x;
+	}
+	printf "\n";
+}
+
+function pg_print_protect(x)
+{
+	print_protect(x, 1);
+}
+
+function sp_print_protect(x)
+{
+	print_protect(x, 2);
+}
+
 function pgn_header()
 {
+	# TCL
+	printf "{\n";
+	pg_print_protect(pgn);
+	pg_print_protect(pg_label);
+	pg_print_protect(pg_name);
+	pg_print_protect(pg_desc);
+	pg_print_protect(edp);
+	pg_print_protect(dp);
+	pg_print_protect(pf);
+	pg_print_protect(ps);
+	pg_print_protect(multipacket);
+	pg_print_protect(txrate);
+	pg_print_protect(datalen);
+	pg_print_protect(priority);
+	printf "\t{\n";
+
 	#
 	# FOREACH PGN
 	#
@@ -136,6 +181,9 @@ function pgn_footer(  i, label, word)
 	if (last_pgn == -1) {
 		return;
 	}
+	# TCL
+	printf "\t}\n";
+	printf "}\n";
 	#
 	# FOREACH SPN
 	#
@@ -206,6 +254,27 @@ function spn_record(  len, pos, mask, shift, hex)
 	f_len[n_fields] = len;
 	f_label[n_fields] = sp_label;
 	n_fields++;
+
+	# TCL
+	printf "\t{\n";
+	sp_print_protect(sp_position);
+	sp_print_protect(spn);
+	sp_print_protect(sp_label);
+	sp_print_protect(sp_desc);
+	sp_print_protect(sp_length);
+	sp_print_protect(resolution);
+	sp_print_protect(offset);
+	sp_print_protect(datrange);
+	sp_print_protect(operange);
+	sp_print_protect(units);
+	sp_print_protect(slot_id);
+	sp_print_protect(slot_name);
+	sp_print_protect(len);
+	sp_print_protect(pos);
+	sp_print_protect(mask);
+	sp_print_protect(shift);
+	sp_print_protect(hex);
+	printf "\t}\n";
 }
 
 $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
