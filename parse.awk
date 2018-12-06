@@ -5,7 +5,6 @@ BEGIN {
 	last_pgn = -1;
 	n_fields = 0;
 	n_pgn = 0;
-	debug_outfile = "j1939.txt";
 	c_header_outfile = "j1939_msg.h"
 	c_decode_outfile = "j1939_decode.c"
 	c_print_outfile = "j1939_print.c"
@@ -159,8 +158,6 @@ function pgn_header()
 	#
 	# FOREACH PGN
 	#
-	printf "%5d %s  %s\n", pgn, pg_name, pg_label > debug_outfile;
-
 	printf "\n"					> c_header_outfile;
 	printf "// %s\n", pg_label			> c_header_outfile;
 	printf "\n"					> c_header_outfile;
@@ -240,8 +237,6 @@ function spn_record(  len, pos, mask, shift, hex)
 	if (len > 32) {
 		return;
 	}
-	printf "\t%5d bitpos=%2d bitlen=%2d {%7s %6s} %s\n", \
-		spn, pos, len, sp_length, sp_position, sp_label  > debug_outfile;
 
 	mask = sprintf("SPN%d_MASK", spn);
 	shift = sprintf("SPN%d_SHIFT", spn);

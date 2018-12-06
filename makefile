@@ -4,6 +4,7 @@ all: j1939_msg.h j1939_slot.h cd2j1939
 
 j1939_msg.h j1939_decode.c j1939_print.c all_pgn.tcl: j1939-flat.tsv parse.awk
 	./parse.awk < j1939-flat.tsv > all_pgn.tcl
+	./generate.tcl
 
 j1939_slot.h: slots.tsv parse_slots.awk
 	./parse_slots.awk < slots.tsv > j1939_slot.h
