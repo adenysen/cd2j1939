@@ -38,25 +38,23 @@ proc splist_unpack_item {} {
 	uplevel {set hex	[lindex $item 16]}
 }
 
-proc generate_pg_report {item} {
+proc report_visit_pgn {fd item} {
 	pglist_unpack_item
-	puts $::dbg [format "%5d %s  %s" $pgn $pg_name $pg_label]
+	puts $fd [format "%5d %s  %s" $pgn $pg_name $pg_label]
 	foreach y $spn {
-		generate_sp_report $y
+		report_visit_spn $fd $y
 	}
 }
 
-proc generate_sp_report {item} {
+proc report_visit_spn {fd item} {
 	splist_unpack_item
-	puts $::dbg [format "\t%5d bitpos=%2d bitlen=%2d {%7s %6s} %s" \
+	puts $fd [format "\t%5d bitpos=%2d bitlen=%2d {%7s %6s} %s" \
 			$spn $pos $len $sp_length $sp_pos $sp_label]
 }
 
-set ::debug_outfile "j1939.txt"
-set ::dbg [open $debug_outfile "w"]
-
+set debug_outfile "j1939.txt"
+set fd [open $debug_outfile "w"]
 foreach x $::all_pgn {
-	generate_pg_report $x
+	report_visit_pgn $fd $x
 }
-
-close $::dbg
+close $fd
