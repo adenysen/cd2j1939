@@ -19,6 +19,9 @@ static void put(char val, int inside)
 			putchar('\\');
 			putchar('t');
 			break;
+		default:
+			putchar(val);
+			break;
 		}
 	} else {
 		putchar(val);
