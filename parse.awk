@@ -185,7 +185,7 @@ function pgn_footer(  i, label, word)
 function spn_record(  len, pos, mask, shift, hex)
 {
 	len = bitlen(sp_length);
-	pos = bitpos(position);
+	pos = bitpos(sp_position);
 	# Ignore these two that are larger than eight bytes:
 	# 1198   2-8 56 Anti-theft Random Number
 	# 1202   2-8 56 Anti-theft Password Representation
@@ -193,7 +193,7 @@ function spn_record(  len, pos, mask, shift, hex)
 		return;
 	}
 	printf "\t%5d bitpos=%2d bitlen=%2d {%7s %6s} %s\n", \
-		spn, pos, len, sp_length, position, sp_label  > debug_outfile;
+		spn, pos, len, sp_length, sp_position, sp_label  > debug_outfile;
 
 	mask = sprintf("SPN%d_MASK", spn);
 	shift = sprintf("SPN%d_SHIFT", spn);
@@ -224,8 +224,8 @@ $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
 	txrate = $14; # NB text
 	datalen = $15;
 	priority = $16;
-	ref = $17;
-	position = $18;
+	ref = $17; # uninteresting
+	sp_position = $18; # byte.bit or byte-byte
 	spn = $19;
 	sp_label = $20;
 	sp_desc = $21;
@@ -252,7 +252,7 @@ $1 != "Revised" && $15 == 8 && $18 != "" && $19 != "" {
 
 	# Sanity check for duplicate SPN numbers.
 	if (spn in all) {
-		print NR, spn, position;
+		print NR, spn, sp_position;
 	}
 	all[spn] = 1;
 
