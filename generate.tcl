@@ -38,6 +38,80 @@ proc splist_unpack_item {} {
 	uplevel {set hex	[lindex $item 16]}
 }
 
+#
+# C Language
+#
+proc ccode_header {fd} {
+	puts $fd "#ifndef HAVE_J1939_REG_H"
+	puts $fd "#define HAVE_J1939_REG_H"
+	puts $fd ""
+	puts $fd "#include <stdint.h>"
+	puts $fd "#include <stdio.h>"
+	puts $fd ""
+	puts $fd [format "#define %-16s %s" "PF_MASK"  "0xff"]
+	puts $fd [format "#define %-16s %s" "PF_SHIFT" "16"]
+	puts $fd [format "#define %-16s %s" "PS_MASK"  "0xff"]
+	puts $fd [format "#define %-16s %s" "PS_SHIFT" "8"]
+}
+
+proc ccode_footer {fd} {
+	puts $fd ""
+	puts $fd "struct j1939_msg {"
+	puts $fd "\tunsigned int type;"
+	puts $fd "\tunion {"
+	foreach item $::all_pgn {
+		pglist_unpack_item
+		set tmp [string tolower $pg_name]
+		puts $fd [format "\t\tstruct %s %s;" $tmp $tmp]
+	}
+	puts $fd "\t};"
+	puts $fd "};"
+	puts $fd ""
+	puts $fd "int j1939_decode(unsigned int type, uint64_t data, struct j1939_msg *msg);"
+	puts $fd "void j1939_print(FILE *fp, struct j1939_msg *msg);"
+	puts $fd ""
+	puts $fd "#endif"
+}
+
+proc ccode_visit_pgn {fd item} {
+	pglist_unpack_item
+	puts $fd ""
+	puts $fd "// $pg_label"
+	puts $fd ""
+	puts $fd [format "#define %-16s %d" $pg_name $pgn]
+	puts $fd ""
+	foreach y $spn {
+		ccode_visit_spn_mask $fd $y
+	}
+	puts $fd ""
+	puts $fd "struct [string tolower $pg_name] {"
+	foreach y $spn {
+		ccode_visit_spn_field $fd $y
+	}
+	puts $fd "};"
+}
+
+proc ccode_visit_spn_field {fd item} {
+	splist_unpack_item
+	set word [expr int(($len + 7) / 8)]
+	if {$word == 3} {
+		incr word
+	} elseif {$word > 4} {
+		set word 8
+	}
+	set word [expr $word * 8]
+	puts $fd [format "\tuint%d_t spn%d;" $word $spn]
+}
+
+proc ccode_visit_spn_mask {fd item} {
+	splist_unpack_item
+	puts $fd [format "#define %-16s 0x%x" $mask $hex]
+	puts $fd [format "#define %-16s %d" $shift $pos]
+}
+
+#
+# Plain text report
+#
 proc report_visit_pgn {fd item} {
 	pglist_unpack_item
 	puts $fd [format "%5d %s  %s" $pgn $pg_name $pg_label]
@@ -57,4 +131,13 @@ set fd [open $debug_outfile "w"]
 foreach x $::all_pgn {
 	report_visit_pgn $fd $x
 }
+close $fd
+
+set c_header_outfile "j1939_msg.h"
+set fd [open $c_header_outfile "w"]
+ccode_header $fd
+foreach x $::all_pgn {
+	ccode_visit_pgn $fd $x
+}
+ccode_footer $fd
 close $fd

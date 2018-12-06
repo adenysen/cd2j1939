@@ -4,24 +4,12 @@ BEGIN {
 	FS = "\t";
 	last_pgn = -1;
 	n_fields = 0;
-	n_pgn = 0;
 	c_header_outfile = "j1939_msg.h"
 	c_decode_outfile = "j1939_decode.c"
 	c_print_outfile = "j1939_print.c"
 
 	# TCL
 	printf "set ::all_pgn {\n"
-
-	printf "#ifndef HAVE_J1939_REG_H\n"		> c_header_outfile;
-	printf "#define HAVE_J1939_REG_H\n"		> c_header_outfile;
-	printf "\n"					> c_header_outfile;
-	printf "#include <stdint.h>\n"			> c_header_outfile;
-	printf "#include <stdio.h>\n"			> c_header_outfile;
-	printf "\n"					> c_header_outfile;
-	printf "#define %-16s %s\n", "PF_MASK",  "0xff"	> c_header_outfile;
-	printf "#define %-16s %s\n", "PF_SHIFT", "16"	> c_header_outfile;
-	printf "#define %-16s %s\n", "PS_MASK",  "0xff"	> c_header_outfile;
-	printf "#define %-16s %s\n", "PS_SHIFT", "8"	> c_header_outfile;
 
 	printf "#include \"%s\"\n", c_header_outfile	> c_decode_outfile;
 	printf "\n"					> c_decode_outfile;
@@ -44,23 +32,6 @@ BEGIN {
 
 END {
 	pgn_footer();
-
-	printf "\n"					> c_header_outfile;
-	printf "struct j1939_msg {\n"			> c_header_outfile;
-	printf "\tunsigned int type;\n"			> c_header_outfile;
-	printf "\tunion {\n"				> c_header_outfile;
-	for (i = 0; i < n_pgn; i++) {
-		printf "\t\tstruct %s %s;\n", \
-			tolower(all_pgn[i]), tolower(all_pgn[i]) > c_header_outfile;
-	}
-	printf "\t};\n"					> c_header_outfile;
-	printf "};\n"					> c_header_outfile;
-	printf "\n"					> c_header_outfile;
-
-	printf "int j1939_decode(unsigned int type, uint64_t data, struct j1939_msg *msg);\n" > c_header_outfile;
-	printf "void j1939_print(FILE *fp, struct j1939_msg *msg);\n" > c_header_outfile;
-	printf "\n"					> c_header_outfile;
-	printf "#endif\n"				> c_header_outfile;
 
 	printf "\tdefault:\n"				> c_decode_outfile;
 	printf "\t\treturn -1;\n"			> c_decode_outfile;
@@ -158,22 +129,14 @@ function pgn_header()
 	#
 	# FOREACH PGN
 	#
-	printf "\n"					> c_header_outfile;
-	printf "// %s\n", pg_label			> c_header_outfile;
-	printf "\n"					> c_header_outfile;
-	printf "#define %-16s %d\n", pg_name, pgn	> c_header_outfile;
-
 	printf "\tcase %s:\n", pg_name			> c_decode_outfile;
 
 	printf "\tcase %s:\n", pg_name			> c_print_outfile;
 	printf "\t\tfprintf(fp, \"* %s -- %s\\n\");\n", \
 		pg_name, pg_label			> c_print_outfile;
-
-	all_pgn[n_pgn] = pg_name;
-	n_pgn++;
 }
 
-function pgn_footer(  i, label, word)
+function pgn_footer(  i, label)
 {
 	if (last_pgn == -1) {
 		return;
@@ -184,18 +147,7 @@ function pgn_footer(  i, label, word)
 	#
 	# FOREACH SPN
 	#
-	printf "\n"					> c_header_outfile;
-	printf "struct %s {\n", tolower(pg_name)	> c_header_outfile;
 	for (i = 0; i < n_fields; i++) {
-		word = int((f_len[i] + 7) / 8);
-		if (word == 3) {
-		    word++;
-		} else if (word > 4) {
-		    word = 8;
-		}
-		word *= 8;
-		printf "\tuint%d_t spn%d;\n", \
-			word, f_spn[i]			> c_header_outfile;
 
 		printf "\t\tmsg->%s.spn%d = (data >> SPN%d_SHIFT) & SPN%d_MASK;\n", \
 			tolower(pg_name), f_spn[i], f_spn[i], f_spn[i] > c_decode_outfile;
@@ -221,7 +173,6 @@ function pgn_footer(  i, label, word)
 		printf "\t\tfprintf(fp, \"  %-54s %%s %s  0x%%x\\n\", ptr, msg->%s.spn%d);\n", \
 			label, units, tolower(pg_name), f_spn[i] > c_print_outfile;
 	}
-	printf "};\n"					> c_header_outfile;
 	printf "\t\tbreak;\n"				> c_decode_outfile;
 	printf "\t\tbreak;\n"				> c_print_outfile;
 	n_fields = 0;
@@ -242,11 +193,7 @@ function spn_record(  len, pos, mask, shift, hex)
 	shift = sprintf("SPN%d_SHIFT", spn);
 	hex = int(lshift(1, len)) - 1;
 
-	printf "#define %-16s 0x%x\n", mask, hex	> c_header_outfile;
-	printf "#define %-16s %d\n", shift, pos		> c_header_outfile;
-
 	f_spn[n_fields] = spn;
-	f_len[n_fields] = len;
 	f_label[n_fields] = sp_label;
 	n_fields++;
 
