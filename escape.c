@@ -7,7 +7,7 @@
 
 #define QUOTE 0x27
 
-static void put(char val, int inside)
+static void put(int val, int inside)
 {
 	if (inside) {
 		switch (val) {
@@ -30,14 +30,9 @@ static void put(char val, int inside)
 
 int main()
 {
-	int inside = 0, qcnt = 0;
-	char val;
+	int inside = 0, qcnt = 0, val;
 
-	while (1) {
-		val = getchar();
-		if (val == EOF) {
-			break;
-		}
+	while ((val = getchar()) && EOF != val) {
 		switch (qcnt) {
 		case 0:
 			if (val == QUOTE) {
